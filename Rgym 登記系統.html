@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RGym登記系統</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 15px; background-color: #f4f6f8; }
+    .container { max-width: 480px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    h2, h3 { color: #2c3e50; text-align: center; margin-top: 0; }
+    .tab { display: flex; margin-bottom: 15px; border-bottom: 2px solid #ddd; }
+    .tab button { flex: 1; padding: 10px; border: none; background: none; font-size: 16px; cursor: pointer; }
+    .tab button.active { font-weight: bold; border-bottom: 3px solid #3498db; color: #3498db; }
+    .content { display: none; }
+    .content.active { display: block; }
+    
+    /* 螢幕數字鍵盤 */
+    .display-input {
+      width: 100%; padding: 12px; font-size: 28px; text-align: center; letter-spacing: 3px;
+      border-radius: 8px; border: 2px solid #3498db; box-sizing: border-box; background-color: #f9f9f9; margin-bottom: 15px; font-weight: bold;
+    }
+    .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
+    .numpad button { padding: 16px; font-size: 24px; font-weight: bold; border: none; border-radius: 8px; background-color: #e9ecef; color: #2c3e50; cursor: pointer; }
+    .numpad button:active { background-color: #ced4da; }
+    .numpad button.btn-clear { background-color: #e74c3c; color: white; }
+    .numpad button.btn-delete { background-color: #f39c12; color: white; }
+    
+    .btn-submit { width: 100%; padding: 14px; background-color: #2ecc71; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 5px; }
+    .btn-admin { background-color: #3498db; color: white; border: none; padding: 10px; border-radius: 6px; width: 100%; cursor: pointer; font-size: 16px; }
+    .btn-secondary { background-color: #7f8c8d; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+    
+    .admin-section { background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #e9ecef; margin-bottom: 15px; }
+    input[type="file"] { margin: 10px 0; }
+    textarea { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
+    
+    .message { margin-top: 15px; padding: 12px; border-radius: 6px; font-weight: bold; text-align: center; font-size: 16px; word-break: break-all; }
+    .success { background-color: #d4edda; color: #155724; }
+    .error { background-color: #f8d7da; color: #721c24; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>🏋️ Rgym</h2>
+
+  <div class="tab">
+    <button class="tab-link active" onclick="openTab('checkin')">學生簽到</button>
+    <button class="tab-link" onclick="openTab('admin')">後台管理</button>
+  </div>
+
+  <!-- 學生簽到頁面 -->
+  <div id="checkin" class="content active">
+    <input type="text" id="studentIdInput" class="display-input" placeholder="請點擊數字簽到" readonly>
+    
+    <div class="numpad">
+      <button onclick="pressNum('1')">1</button>
+      <button onclick="pressNum('2')">2</button>
+      <button onclick="pressNum('3')">3</button>
+      <button onclick="pressNum('4')">4</button>
+      <button onclick="pressNum('5')">5</button>
+      <button onclick="pressNum('6')">6</button>
+      <button onclick="pressNum('7')">7</button>
+      <button onclick="pressNum('8')">8</button>
+      <button onclick="pressNum('9')">9</button>
+      <button class="btn-clear" onclick="clearInput()">清空</button>
+      <button onclick="pressNum('0')">0</button>
+      <button class="btn-delete" onclick="deleteLast()">⌫ 刪除</button>
+    </div>
+
+    <button class="btn-submit" onclick="submitCheckIn()">確認簽到</button>
+    <div id="checkinMsg"></div>
+  </div>
+
+  <!-- 後台管理頁面 -->
+  <div id="admin" class="content">
+    <div id="adminAuth">
+      <label>後台管理密碼：</label>
+      <input type="password" id="adminPassword" placeholder="輸入後台密碼" style="width:100%; padding:10px; margin:10px 0; box-sizing:border-box;">
+      <button class="btn-admin" onclick="loginAdmin()">登入後台</button>
+    </div>
+
+    <div id="adminPanel" style="display:none;">
+      <div class="admin-section">
+        <h3>📂 檔案匯入 (CSV)</h3>
+        <button class="btn-secondary" onclick="downloadCSVTemplate()">⬇️ 下載 CSV 範本檔</button>
+        <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ddd;">
+        <label>選擇 CSV 檔案：</label>
+        <input type="file" id="csvFileInput" accept=".csv">
+        <button class="btn-submit" onclick="uploadCSVFile()">上傳並匯入 Google Sheet</button>
+      </div>
+
+      <div class="admin-section">
+        <h3>✏️ 手動預覽與編輯名單</h3>
+        <p style="font-size: 12px; color: #666;">每行一位學生（格式：學生證編號,姓名）</p>
+        <textarea id="csvInput" rows="8" placeholder="1234567,陳大文&#10;7654321,張小明"></textarea>
+        <button class="btn-submit" style="background-color:#3498db;" onclick="saveEligibleUsersText()">覆蓋並更新名單</button>
+      </div>
+
+      <div id="adminMsg"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 🔗 請將下方引號內替換為你 Google Apps Script 部署獲得的網址：
+  const API_URL = "https://script.google.com/macros/s/AKfycbzg43RmvT6hDWv17tme49PuNyLFiXsVabKWd9G-ySuaUVuRU2xyk3Wtt5Nl9YsLGi63/exec";
+  function openTab(tabName) {
+    document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.tab-link').forEach(t => t.classList.remove('active'));
+    document.getElementById(tabName).classList.add('active');
+    event.currentTarget.classList.add('active');
+  }
+
+  // 鍵盤邏輯
+  function pressNum(num) { document.getElementById('studentIdInput').value += num; }
+  function clearInput() { document.getElementById('studentIdInput').value = ''; }
+  function deleteLast() {
+    const input = document.getElementById('studentIdInput');
+    input.value = input.value.slice(0, -1);
+  }
+
+  // 發送 API 通用函式 (避免 CORS 問題)
+  async function callAPI(payload) {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload)
+    });
+    return await res.json();
+  }
+
+  // 學生簽到
+  async function submitCheckIn() {
+    const id = document.getElementById('studentIdInput').value;
+    const msgDiv = document.getElementById('checkinMsg');
+    
+    if(!id) {
+      msgDiv.innerText = "請先輸入學生證號碼！";
+      msgDiv.className = "message error";
+      return;
+    }
+
+    msgDiv.innerText = "驗證中...";
+    msgDiv.className = "message";
+
+    try {
+      const res = await callAPI({ action: 'checkIn', studentId: id });
+      msgDiv.innerText = res.message;
+      msgDiv.className = "message " + (res.success ? "success" : "error");
+      if(res.success) document.getElementById('studentIdInput').value = '';
+    } catch (err) {
+      msgDiv.innerText = "網絡連線失敗: " + err.message;
+      msgDiv.className = "message error";
+    }
+  }
+
+  // 後台登入
+  async function loginAdmin() {
+    const pwd = document.getElementById('adminPassword').value;
+    if(!pwd) { alert("請輸入密碼！"); return; }
+
+    try {
+      const res = await callAPI({ action: 'loginAdmin', password: pwd });
+      if (res.success) {
+        document.getElementById('adminAuth').style.display = 'none';
+        document.getElementById('adminPanel').style.display = 'block';
+        let text = res.data.map(row => row.join(',')).join('\n');
+        document.getElementById('csvInput').value = text;
+      } else {
+        alert(res.message);
+      }
+    } catch (err) {
+      alert("連線失敗: " + err.message);
+    }
+  }
+
+  // 下載 CSV 範本
+  function downloadCSVTemplate() {
+    const csvContent = "\uFEFF學生證編號,姓名\n1234567,陳大文\n7654321,張小明\n8888888,李華";
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "健身室合資格名單範本.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  // 上傳 CSV
+  function uploadCSVFile() {
+    const file = document.getElementById('csvFileInput').files[0];
+    if (!file) { alert("請先選擇一個 CSV 檔案！"); return; }
+
+    const reader = new FileReader();
+    reader.onload = function(e) { processAndSaveCSVText(e.target.result); };
+    reader.readAsText(file);
+  }
+
+  // 手動更新
+  function saveEligibleUsersText() {
+    processAndSaveCSVText(document.getElementById('csvInput').value);
+  }
+
+  async function processAndSaveCSVText(rawText) {
+    const pwd = document.getElementById('adminPassword').value;
+    const lines = rawText.trim().split(/\r\n|\n/);
+    
+    const rows = lines.map(line => {
+      let parts = line.split(/[,,\t]/);
+      return [parts[0] ? parts[0].trim() : '', parts[1] ? parts[1].trim() : ''];
+    }).filter(row => row[0] !== '' && row[0] !== '學生證編號');
+
+    const msgDiv = document.getElementById('adminMsg');
+    msgDiv.innerText = "更新中...";
+    msgDiv.className = "message";
+
+    try {
+      const res = await callAPI({ action: 'updateUsers', password: pwd, usersList: rows });
+      msgDiv.innerText = res.message;
+      msgDiv.className = "message " + (res.success ? "success" : "error");
+      if(res.success) {
+        document.getElementById('csvInput').value = rows.map(r => r.join(',')).join('\n');
+      }
+    } catch (err) {
+      msgDiv.innerText = "更新失敗: " + err.message;
+      msgDiv.className = "message error";
+    }
+  }
+</script>
+
+</body>
+</html>
